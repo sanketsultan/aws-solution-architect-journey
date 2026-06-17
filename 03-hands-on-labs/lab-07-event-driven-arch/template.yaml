@@ -1,0 +1,155 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Lab 07 — Event-Driven Order Processing (SNS fan-out + Lambda consumers)
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 30
+    MemorySize: 256
+    Tracing: Active  # X-Ray
+
+Resources:
+  # -------------------------------------------------------
+  # SNS Topic — Order Placed
+  # -------------------------------------------------------
+  OrderPlacedTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AWS::StackName}-OrderPlaced"
+
+  # -------------------------------------------------------
+  # Dead-Letter Queues
+  # -------------------------------------------------------
+  OrderProcessorDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AWS::StackName}-OrderProcessor-DLQ"
+      MessageRetentionPeriod: 1209600  # 14 days
+
+  InventoryUpdaterDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AWS::StackName}-InventoryUpdater-DLQ"
+      MessageRetentionPeriod: 1209600
+
+  # -------------------------------------------------------
+  # SQS Queues
+  # -------------------------------------------------------
+  OrderProcessorQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AWS::StackName}-OrderProcessor"
+      VisibilityTimeout: 60
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt OrderProcessorDLQ.Arn
+        maxReceiveCount: 3
+
+  InventoryUpdaterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AWS::StackName}-InventoryUpdater"
+      VisibilityTimeout: 60
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt InventoryUpdaterDLQ.Arn
+        maxReceiveCount: 3
+
+  # -------------------------------------------------------
+  # SNS Subscriptions → SQS Queues
+  # -------------------------------------------------------
+  OrderProcessorQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: [!Ref OrderProcessorQueue]
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: { Service: sns.amazonaws.com }
+            Action: sqs:SendMessage
+            Resource: !GetAtt OrderProcessorQueue.Arn
+            Condition:
+              ArnEquals: { "aws:SourceArn": !Ref OrderPlacedTopic }
+
+  OrderProcessorSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref OrderPlacedTopic
+      Protocol: sqs
+      Endpoint: !GetAtt OrderProcessorQueue.Arn
+      RawMessageDelivery: true
+
+  InventoryUpdaterQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: [!Ref InventoryUpdaterQueue]
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: { Service: sns.amazonaws.com }
+            Action: sqs:SendMessage
+            Resource: !GetAtt InventoryUpdaterQueue.Arn
+            Condition:
+              ArnEquals: { "aws:SourceArn": !Ref OrderPlacedTopic }
+
+  InventoryUpdaterSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref OrderPlacedTopic
+      Protocol: sqs
+      Endpoint: !GetAtt InventoryUpdaterQueue.Arn
+      RawMessageDelivery: true
+
+  # -------------------------------------------------------
+  # Lambda Consumers
+  # -------------------------------------------------------
+  OrderProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-OrderProcessor"
+      InlineCode: |
+        import json, logging
+        logger = logging.getLogger()
+        logger.setLevel("INFO")
+        def handler(event, context):
+            for record in event["Records"]:
+                body = json.loads(record["body"])
+                logger.info("Processing order: %s", body)
+      Handler: index.handler
+      Policies: [SQSPollerPolicy: { QueueName: !GetAtt OrderProcessorQueue.QueueName }]
+      Events:
+        SQSTrigger:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt OrderProcessorQueue.Arn
+            BatchSize: 10
+            FunctionResponseTypes: [ReportBatchItemFailures]
+
+  InventoryUpdaterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-InventoryUpdater"
+      InlineCode: |
+        import json, logging
+        logger = logging.getLogger()
+        logger.setLevel("INFO")
+        def handler(event, context):
+            for record in event["Records"]:
+                body = json.loads(record["body"])
+                logger.info("Updating inventory for order: %s", body)
+      Handler: index.handler
+      Policies: [SQSPollerPolicy: { QueueName: !GetAtt InventoryUpdaterQueue.QueueName }]
+      Events:
+        SQSTrigger:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt InventoryUpdaterQueue.Arn
+            BatchSize: 10
+            FunctionResponseTypes: [ReportBatchItemFailures]
+
+# -------------------------------------------------------
+# Outputs
+# -------------------------------------------------------
+Outputs:
+  OrderPlacedTopicArn:
+    Description: Publish orders here
+    Value: !Ref OrderPlacedTopic

@@ -1,0 +1,77 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Lab 02 — Serverless REST API with Lambda and DynamoDB
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 30
+    MemorySize: 256
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref ItemsTable
+        LOG_LEVEL: INFO
+
+Resources:
+  # -------------------------------------------------------
+  # DynamoDB Table
+  # -------------------------------------------------------
+  ItemsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AWS::StackName}-items"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  # -------------------------------------------------------
+  # Lambda Function
+  # -------------------------------------------------------
+  ItemsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-items-handler"
+      CodeUri: src/
+      Handler: handler.lambda_handler
+      Description: CRUD handler for the Items API
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ItemsTable
+      Events:
+        GetItems:
+          Type: HttpApi
+          Properties:
+            Path: /items
+            Method: GET
+        GetItem:
+          Type: HttpApi
+          Properties:
+            Path: /items/{id}
+            Method: GET
+        CreateItem:
+          Type: HttpApi
+          Properties:
+            Path: /items
+            Method: POST
+        DeleteItem:
+          Type: HttpApi
+          Properties:
+            Path: /items/{id}
+            Method: DELETE
+
+# -------------------------------------------------------
+# Outputs
+# -------------------------------------------------------
+Outputs:
+  ApiEndpoint:
+    Description: HTTP API base URL
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+  TableName:
+    Description: DynamoDB table name
+    Value: !Ref ItemsTable
