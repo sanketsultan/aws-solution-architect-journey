@@ -22,6 +22,58 @@ Design principles and best practices for building reliable, efficient, and cost-
 | Cost | Cost Explorer, Trusted Advisor, Compute Optimizer |
 | Sustainability | Graviton instances, Spot, S3 Intelligent-Tiering |
 
+## Measuring Success
+
+A comprehensive approach to measuring success using the AWS Well-Architected Framework ensures that organizations can effectively track progress, identify areas for improvement, and maintain high standards.
+
+### Operational Excellence
+- Mean Time to Recovery (MTTR)
+- Mean Time Between Failures (MTBF)
+- Deployment frequency and success rates
+- Time to detect and resolve issues
+- Change management success rates
+- Automation coverage
+
+### Security
+- Security incident rates
+- Time to patch systems
+- Compliance audit results
+- Percentage of resources following security best practices
+- Number of security findings
+- Time to respond to security events
+
+### Reliability
+- System availability percentage
+- Recovery Time Objective (RTO)
+- Recovery Point Objective (RPO)
+- Error rates
+- Number of successful failovers
+- Service Level Agreement (SLA) compliance
+
+### Performance Efficiency
+- Resource utilization rates
+- Response times
+- Latency metrics
+- Throughput
+- System scalability metrics
+- Cache hit rates
+
+### Cost Optimization
+- Cost per unit of work
+- Resource utilization vs. cost
+- Waste identification and reduction
+- Reserved Instance coverage
+- Cost allocation accuracy
+- ROI on cloud investments
+
+### Sustainability
+- Carbon footprint metrics
+- Resource efficiency
+- Hardware lifecycle management
+- Renewable energy usage
+- Environmental impact reduction
+- Sustainable architecture practices
+
 ## Study Notes
 
 <!-- Fill in your notes here — record key questions from the WAFR tool -->
