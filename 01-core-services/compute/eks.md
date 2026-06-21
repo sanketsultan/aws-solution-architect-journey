@@ -1,6 +1,6 @@
 # Amazon EKS — Elastic Kubernetes Service
 
-Managed Kubernetes control plane on AWS.
+Managed Kubernetes control plane on AWS. EKS falls under the **containers** compute model — containers share the host OS/kernel, making them lighter than VMs while providing strong workload isolation via Kubernetes primitives.
 
 ## Key Topics
 

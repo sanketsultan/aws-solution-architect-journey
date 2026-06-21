@@ -1,6 +1,6 @@
 # AWS Lambda
 
-Serverless, event-driven compute — run code without managing servers.
+Serverless, event-driven compute — run code without managing servers. Lambda is the **serverless** compute model on AWS: no VMs to provision, no containers to manage. You bring the code; AWS handles everything else.
 
 ## Key Topics
 

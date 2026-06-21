@@ -2,6 +2,13 @@
 
 Container orchestration on AWS — managed clusters with optional serverless compute via Fargate.
 
+## Containers vs VMs (Why Containers?)
+
+- Containers share the host OS and kernel — no separate Guest OS per container
+- VMs each carry a full Guest OS copy → more resource overhead
+- Result: containers are lighter, start faster, and pack more density per host
+- Trade-off: less isolation than VMs (shared kernel); mitigated by security tooling (seccomp, AppArmor, etc.)
+
 ## Key Topics
 
 - **ECS Concepts** — Clusters, Task Definitions, Tasks, Services; bridge vs. awsvpc network modes
